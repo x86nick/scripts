@@ -16,9 +16,8 @@ cd "${repo_path}"
 
 git branch
 
-echo ""
+echo "======="
 echo "Now you are ready to start making your changes"
 echo ""
 echo "Once you are done with your changes\n do 'git add .' , git commit -m "changes" "
-echo "Or just run gitMerge.sh"
-echo ""
+echo "======="
