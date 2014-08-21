@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -eu
 
 working=$1
 repo_path=$2
