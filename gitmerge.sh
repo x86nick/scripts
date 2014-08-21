@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -eu
 
 #Once changes done in local branch, follow below steps.
 
