@@ -10,7 +10,7 @@ fi
 apt-get -y install vlan
 echo 8021q >> /etc/modules
 modprobe -r 8021q
-ipaddr=`ifconfig  eth0 | grep "inet addr" | cut -d ':' -f2 | cut -d ' ' -f1`
+ipaddr=`ifconfig  eth0 | grep "inet addr" | awk -F: '{print $2}' | awk '{print $1}'`
 echo $ipaddr
 
 grep -v eth0 $interfaces >/tmp/newinterface
