@@ -1,0 +1,18 @@
+task :all
+
+namespace :service1 do
+        desc "start the service1 service"
+        task :start do
+                puts "placeholder to start the service1 service"
+        end
+
+        desc "stop the service1 service"
+        task :start do
+                puts "placeholder to stop the service1 service"
+        end
+
+        desc "shell"
+        task :shell do
+                puts "placeholder to login to service1 service instance via ssh"
+        end
+end
