@@ -1,55 +1,68 @@
 #!/bin/bash
-#############install artifactroy from aritifactory
-set -eu
-
 #### install unzip & oracle java
-sudo apt-get update
-sudo apt-get -y install unzip
-sudo apt-get -y install python-software-properties
+
+sudo apt-get -y update
+sudo apt-get -y install software-properties-common python-software-properties unzip supervisor
 sudo add-apt-repository -y ppa:webupd8team/java
 sudo apt-get -y update
+# state that you accepted the license
+echo debconf shared/accepted-oracle-license-v1-1 select true | sudo debconf-set-selections
+echo debconf shared/accepted-oracle-license-v1-1 seen true | sudo debconf-set-selections
+
 sudo apt-get -y install oracle-java7-installer
 
+#Create a user that will run aritifactoy app
+sudo useradd artifactory
+# Download artifactory
 cd /tmp
-mkdir -p /opt/data
+wget --quiet http://dl.bintray.com/jfrog/artifactory/artifactory-3.3.1.zip
 
-#Download aritifactory from artifactory
-wget http://artifact.myDomain.com/artifactory/simple/third-party/artifactory-powerpack-standalone
+unzip artifactory-3.3.1.zip
 
-mv artifactory-powerpack-standalone-3.2.2.zip /opt/data/
-cd /opt/data
-unzip artifactory-powerpack-standalone-3.2.2.zip
+mv artifactory-3.3.1 /opt/artifactory
 
+chown -R artifactory:artifactory /opt/artifactory
 
-##Running artifactory
-####
+### Add artifacoty to path & start
+cat <<EOF | sudo tee -a /etc/profile
 
+#artifactory
 
-$ARTIFACTORY_HOME/bin/artifactoryctl start
+export ARTIFACTORY_HOME=/opt/artifactory
+if [ -d \${ARTIFACTORY_HOME} ] ; then
+export PATH=\${PATH}:\${ARTIFACTORY_HOME}/bin
+fi
+EOF
 
+#install apache for reverse proxy
+sudo apt-get -y install apache2
+sudo a2enmod -q proxy rewrite proxy_http
 
-apt-get -y install apache2
-
-a2enmod
-
-proxy
-
-
-cat <<EOF | sudo tee -a /etc/apache2/sites-available/artifactory
+cat <<EOF | sudo tee -a /etc/apache2/sites-available/artifactory.conf
 
 <VirtualHost *:80>
-  ServerName artifact.myDomain.com
-  ServerAlias artifact
-  ErrorLog "/var/log/apache2/artifactory-error_log"
+       ServerName artifactory.mydomain.com
+       ServerAlias artifactory
+       DocumentRoot /opt/loyal3/
+       ErrorLog "/var/log/apache2/artifactory-error_log"
 <Location /artifactory/>
-    Order deny,allow
-    Allow from all
+	 Order deny,allow
+	 Allow from all
 </Location>
-  ProxyPreserveHost on
-  ProxyPass /artifactory/ http://localhost:8081/artifactory/
-  ProxyPassReverse /artifactory/ http://localhost:8081/artifactory/
+	RewriteEngine on
+	RewriteRule ^/artifactory$ /artifactory/ [R=301]
+	ProxyPreserveHost on
+	ProxyPass /artifactory/ http://localhost:8081/artifactory/
+	ProxyPassReverse /artifactory/ http://localhost:8081/artifactory/
 </VirtualHost>
 
 EOF
-sudo a2ensite artifactory
 
+chmod +x /opt/artifactory/bin/artifactoryctl
+#
+  a2ensite artifactory.conf
+  a2dissite 000-default
+  service apache2 reload
+#
+#
+/opt/artifactory/bin/artifactoryctl start
