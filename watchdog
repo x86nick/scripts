@@ -1,0 +1,96 @@
+package main
+import (
+"code.google.com/p/go.net/context"
+"github.com/codegangsta/cli"
+"github.com/savaki/httpctx"
+"log"
+"os"
+"os/exec"
+"sync"
+"time"
+)
+type Status int
+const (
+Unknown Status = iota
+Ok
+Bad
+)
+func main() {
+app := cli.NewApp()
+app.Name = "watcher"
+app.Usage = "watch stuff"
+app.Flags = []cli.Flag{
+cli.StringSliceFlag{"url", &cli.StringSlice{}, "the urls to watch", ""},
+cli.IntFlag{"timeout", 10, "timeout for a single request (sec)", ""},
+cli.IntFlag{"interval", 5, "time between requests (sec)", ""},
+cli.IntFlag{"grace-period", 60, "grace period after restart before watching (sec)", ""},
+cli.StringFlag{"script", "", "the name of the script to use to restart", ""},
+}
+app.Action = watchForever
+app.Run(os.Args)
+}
+func watchForever(c *cli.Context) {
+script := c.String("script")
+if script == "" {
+log.Fatalln("no restart script provided please provide this with --script")
+}
+urls := c.StringSlice("url")
+interval := c.Int("interval")
+grace := c.Int("grace-period")
+timeout := time.Duration(c.Int("timeout"))
+for {
+status := watchOnce(timeout, urls)
+if status == Bad {
+restartService(script)
+log.Println("waiting ", grace, " seconds for restart before polling continues")
+time.Sleep(time.Duration(grace) * time.Second)
+} else {
+time.Sleep(time.Duration(interval) * time.Second)
+}
+}
+}
+func restartService(script string) {
+log.Println("restarting service")
+cmd := exec.Command(script)
+cmd.Stdout = os.Stdout
+cmd.Stderr = os.Stderr
+cmd.Run()
+}
+func watchOnce(timeout time.Duration, urls []string) Status {
+ch := make(chan string, len(urls)*2)
+defer close(ch)
+wg := &sync.WaitGroup{}
+defer wg.Wait()
+ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Second)
+defer cancel()
+// make a len(urls) parallel requests
+client := httpctx.NewClient()
+for _, url := range urls {
+_url := url
+go func() {
+wg.Add(1)
+defer wg.Done()
+log.Println("fetching", _url)
+defer log.Println(_url, "ok")
+err := client.Get(ctx, _url, nil, nil)
+if err != nil {
+log.Println(err)
+} else {
+ch <- _url
+}
+}()
+}
+log.Println("--------------------------------------------------------------------")
+// wait for each client to return
+for i := len(urls); i > 0; i = i - 1 {
+select {
+case v := <-ch:
+log.Printf("received %s\n", v)
+case <-ctx.Done():
+log.Println("timeout")
+return Bad
+}
+}
+log.Println("ok")
+return Ok
+}
