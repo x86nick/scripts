@@ -1,0 +1,23 @@
+#!/bin/bash -eu
+
+# uncomment to debug
+# set -x
+
+curl -u guest:guest http://tc.mydomain.net:8111/httpAuth/app/rest/agents?includeDisconnected=true > agents.xml
+
+./xml2json.py -t xml2json -o agents.json agents.xml
+
+jq -r '.agents.agent|.[]|select(.["@name"]|startswith("ip-"))|.["@id"]' < agents.json > agents.ids
+
+read -p "tc username: " username
+read -s -p "tc password: " password
+echo
+
+while read agent_id
+do
+  curl -u "$username:$password" -X DELETE http://tc.mydomian.net:8111/httpAuth/app/rest/agents/id:$agent_id &
+done < agents.ids
+
+echo 'waiting for subprocesses'
+wait
+echo 'done'
