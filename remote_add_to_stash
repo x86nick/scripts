@@ -1,0 +1,17 @@
+#!/bin/bash -ex
+# create project in stash as well. use API for creating project in stash
+
+while read REPO
+do
+        mkdir -p "$REPO.git"
+        pushd "$REPO.git"
+        echo runing git remote add stash "ssh://git@stash.mydomain.net:7999/git/$REPO.git" in directory $(pwd)
+        if git remote -v | egrep '^stash'
+        then
+        #       echo repo $REPO already have the stash remote... skipping
+        #else
+                git remote rm stash
+        fi
+git remote add stash "ssh://git@stash.mydomain.net:7999/gitlab/$REPO.git"
+        popd
+done < /gitlab/gitlabrepo.txt
