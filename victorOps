@@ -1,0 +1,16 @@
+#!/bin/bash -e
+api_key="$1"
+message="$3"
+echo victorops
+echo sending
+if echo "$message" | jq -c . > /dev/null
+then
+message=$(echo "$message" | jq -c .)
+else
+message=$(echo '{}' | jq --arg message "$message" --arg host_name "$(hostname -f)" --arg entity_id "$(date +%s)" -c '{"message_type":"critical", "state_message": "PROBLEM", "entity_display_name": "Unrecognized message", "description":$message, "host_name": $host_name, "monitoring_tool": "Zabbix", "entity_id": $entity_id }')
+fi
+echo "$message"
+response=$(curl -s --data-binary "$message" "http://alert.victorops.com/integrations/generic/xxxxxx/alert/$api_key/everyone")
+echo got
+echo "$response"
+[ "$(echo "$response" | jq -r .result)" = "success" ] && exit 0 || exit 5000
