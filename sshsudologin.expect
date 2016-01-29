@@ -1,0 +1,27 @@
+sshsudologin.expect
+#!/usr/bin/expect
+
+#Usage sshsudologin.expect <host> <ssh user> <ssh password> <sudo password> <command>
+
+set timeout 60
+
+spawn ssh [lindex $argv 1]@[lindex $argv 0]
+
+expect "yes/no" {
+  send "yes\r"
+  expect "*?assword" { send "[lindex $argv 2]\r" }
+  } "*?assword" { send "[lindex $argv 2]\r" }
+
+expect "$ " { send "sudo -i\r" }
+send -- "unset HISTFILE\r"
+expect {
+  "*?assword" {
+    send "[lindex $argv 3]\r"
+    exp_continue
+    }
+  "$ " { send "[lindex $argv 4]\r" }
+  "# " { send "[lindex $argv 4]\r" }
+}
+
+expect "# " {send -- "exit\n"}
+expect "$ " {send -- "logout\n"}
