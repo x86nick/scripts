@@ -1,0 +1,1 @@
+cat file.txt | xargs -I{} -n1 aws ec2 authorize-security-group-ingress --group-id sg-xxxxx --protocol tcp --port 443 --cidr {}
