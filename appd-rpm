@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Ensure 2 arguments were passed in
+if [ $# -ne  2 ];
+then
+  echo 'Wrong number of arguments supplied'
+  echo './build.sh <upstream version> <iteration>'
+
+  exit 1
+fi
+
+VERSION=${1}
+ITERATION=${2}
+SOURCE_ARCHIVE="AppServerAgent-${VERSION}.zip"
+
+# Cleanup old build data
+rm -f appdynamics-javaagent-${VERSION}-${ITERATION}.x86_64.rpm
+rm -rf usr/local/appdynamics/javaagent
+mkdir -p usr/local/appdynamics/javaagent
+
+# Check if source archive has been downloaded
+if [ ! -f "${SOURCE_ARCHIVE}" ];
+then
+  echo "${SOURCE_ARCHIVE} needs to be placed in the current directory"
+  echo 'You can download the "Java Agent - Sun and JRockit JVM (zip)" package from https://download.appdynamics.com'
+
+  exit 1
+fi
+
+# Expand source archive
+unzip ${SOURCE_ARCHIVE} -d usr/local/appdynamics/javaagent/
+
+# Generate RPM
+fpm -s dir -t rpm -n appdynamics-javaagent -v ${VERSION} --iteration ${ITERATION} -a x86_64 usr/
